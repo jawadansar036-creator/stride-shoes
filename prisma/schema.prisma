@@ -1,0 +1,80 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model Product {
+  id            String                      @id @default(uuid())
+  name          String
+  slug          String                      @unique
+  brand         String
+  category      String
+  gender        String
+  price         Float
+  originalPrice Float?
+  discount      Int?
+  description   String
+  features      String[]
+  images        String[]
+  colors        String[]
+  sizes         String[]
+  rating        Float                       @default(4.5)
+  reviewCount   Int                         @default(0)
+  inStock       Boolean                     @default(true)
+  isFeatured    Boolean                     @default(false)
+  isNewArrival  Boolean                     @default(false)
+  isBestSeller  Boolean                     @default(false)
+  embedding     Unsupported("vector(1536)")?
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+  orderItems    OrderItem[]
+
+  @@index([category])
+  @@index([brand])
+  @@index([gender])
+  @@index([price])
+}
+
+model KnowledgeDocument {
+  id        String                      @id @default(uuid())
+  title     String
+  category  String
+  content   String
+  embedding Unsupported("vector(1536)")?
+  createdAt DateTime                    @default(now())
+
+  @@index([category])
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderNumber   String      @unique
+  customerEmail String
+  customerName  String
+  address       String
+  city          String
+  postalCode    String
+  country       String
+  totalAmount   Float
+  status        String      @default("confirmed")
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  size      String
+  color     String
+  quantity  Int
+  price     Float
+}
