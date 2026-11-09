@@ -4,8 +4,8 @@ import { NextRequest } from 'next/server';
 export const ADMIN_COOKIE_NAME = 'stride_admin_session';
 
 export function getAdminCredentials() {
-  const email = process.env.ADMIN_EMAIL || 'admin@stride.com';
-  const password = process.env.ADMIN_PASSWORD || 'admin123456';
+  const email = process.env.ADMIN_EMAIL || 'jawadansar036@gmail.com';
+  const password = process.env.ADMIN_PASSWORD || 'strideshoes.765';
   const secret = process.env.ADMIN_SESSION_SECRET || 'stride_default_admin_secret_key_987654321';
   return { email, password, secret };
 }
