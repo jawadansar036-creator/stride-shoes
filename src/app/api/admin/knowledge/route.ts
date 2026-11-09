@@ -6,6 +6,7 @@ import {
   deleteStoreKnowledgeDoc 
 } from '@/lib/store-data';
 import { reindexVectorStore } from '@/lib/ai/vector-store';
+import { isAuthorizedAdmin } from '@/lib/admin-auth';
 
 export async function GET() {
   const docs = getStoreKnowledgeDocs();
@@ -13,6 +14,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ error: 'Unauthorized: Admin authentication required.' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     if (!body.title || !body.content) {
@@ -34,6 +39,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ error: 'Unauthorized: Admin authentication required.' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { id, ...updates } = body;
@@ -59,6 +68,10 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ error: 'Unauthorized: Admin authentication required.' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

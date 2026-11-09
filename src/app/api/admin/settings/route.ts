@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStoreSettings, updateStoreSettings } from '@/lib/store-data';
+import { isAuthorizedAdmin } from '@/lib/admin-auth';
 
 export async function GET() {
   const settings = getStoreSettings();
@@ -7,6 +8,10 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ error: 'Unauthorized: Admin authentication required.' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const updated = updateStoreSettings(body);

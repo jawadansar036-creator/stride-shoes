@@ -26,7 +26,13 @@ import {
   Layers,
   Tag,
   Check,
-  Eye
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  LogOut,
+  Shield,
+  KeyRound
 } from 'lucide-react';
 import { ProductItem } from '@/lib/products-data';
 import { KnowledgeDoc } from '@/lib/knowledge-base';
@@ -88,6 +94,18 @@ export default function AdminDashboard() {
   const [testLoading, setTestLoading] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
 
+  // Auth states
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+
+  // Login form states
+  const [loginEmail, setLoginEmail] = useState('admin@stride.com');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+
   // Load live data from API
   const loadData = async () => {
     setLoading(true);
@@ -110,9 +128,70 @@ export default function AdminDashboard() {
     }
   };
 
+  // Check auth status on initial load
+  const checkAuth = async () => {
+    try {
+      const res = await fetch('/api/admin/auth/me');
+      const data = await res.json();
+      if (data?.authenticated) {
+        setIsAuthenticated(true);
+        setAdminEmail(data.email || 'admin@stride.com');
+        loadData();
+      } else {
+        setIsAuthenticated(false);
+      }
+    } catch {
+      setIsAuthenticated(false);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadData();
+    checkAuth();
   }, []);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginSubmitting(true);
+
+    try {
+      const res = await fetch('/api/admin/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setLoginError(data.error || 'Invalid admin credentials');
+        setLoginSubmitting(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
+      setAdminEmail(data.email || loginEmail);
+      showNotification('Welcome back! Successfully logged into Admin Panel.', 'success');
+      loadData();
+    } catch {
+      setLoginError('Authentication failed. Please verify your connection.');
+    } finally {
+      setLoginSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsAuthenticated(false);
+      setLoginPassword('');
+      showNotification('You have been securely logged out.', 'success');
+    }
+  };
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -330,6 +409,161 @@ export default function AdminDashboard() {
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.total, 14250);
 
+  // 1. Loading screen while verifying admin authorization
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-white text-black font-black text-xl flex items-center justify-center shadow-2xl animate-bounce">
+            S
+          </div>
+          <div className="flex items-center gap-2 text-neutral-400 text-xs font-bold tracking-widest uppercase">
+            <RefreshCw className="w-4 h-4 animate-spin text-white" />
+            <span>Verifying Admin Authorization...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Login Screen if unauthorized
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black text-white flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+        {/* Ambient glow effects */}
+        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10 space-y-6">
+          {/* Brand header */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-800/80 border border-neutral-700 text-[11px] font-bold text-neutral-300 tracking-wider uppercase mb-2">
+              <Shield className="w-3.5 h-3.5 text-accent" />
+              Restricted Admin Portal
+            </div>
+            <div className="flex items-center justify-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-white text-black font-black text-xl flex items-center justify-center shadow-xl">
+                S
+              </div>
+              <span className="text-2xl font-black tracking-tight text-white">STRIDE</span>
+            </div>
+            <h1 className="text-xl font-bold text-neutral-100">Store Management Sign In</h1>
+            <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+              Please enter your administrator credentials to access shoe inventory, pricing, website content, and orders.
+            </p>
+          </div>
+
+          {/* Login Form Card */}
+          <div className="bg-neutral-900/90 border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-5">
+            {loginError && (
+              <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1.5">
+                  Admin Email
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="admin@stride.com"
+                    className="w-full bg-neutral-950/80 border border-neutral-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter admin password"
+                    className="w-full bg-neutral-950/80 border border-neutral-800 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loginSubmitting}
+                className="w-full py-3.5 px-4 bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loginSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <KeyRound className="w-4 h-4" />
+                    <span>Sign In to Dashboard</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Quick Demo Credentials info card */}
+            <div className="p-4 rounded-2xl bg-neutral-950/60 border border-neutral-800/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                  Default Credentials
+                </span>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
+                  Configured
+                </span>
+              </div>
+              <div className="space-y-1 text-xs font-mono text-neutral-300">
+                <div className="flex justify-between items-center bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
+                  <span className="text-neutral-500 text-[11px]">Email:</span>
+                  <span className="select-all font-semibold text-white">admin@stride.com</span>
+                </div>
+                <div className="flex justify-between items-center bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
+                  <span className="text-neutral-500 text-[11px]">Password:</span>
+                  <span className="select-all font-semibold text-white">admin123456</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-neutral-500 pt-1 leading-relaxed">
+                * You can configure custom credentials at any time in Vercel or your <code className="text-neutral-300">.env</code> via <code className="text-neutral-300">ADMIN_EMAIL</code> and <code className="text-neutral-300">ADMIN_PASSWORD</code>.
+              </p>
+            </div>
+          </div>
+
+          {/* Back to store link */}
+          <div className="text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors font-medium"
+            >
+              <span>&larr; Return to Storefront</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Toast Notification */}
@@ -365,23 +599,37 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-neutral-100 rounded-xl text-xs text-neutral-600 border border-neutral-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span className="font-semibold">{adminEmail || 'admin@stride.com'}</span>
+          </div>
+
           <Link
             href="/"
             target="_blank"
-            className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
           >
             <Globe className="w-3.5 h-3.5 text-neutral-600" />
-            <span>View Live Website</span>
+            <span>Live Site</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
 
           <button
             onClick={() => setAddProductModal(true)}
-            className="px-4 py-2.5 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center gap-1.5"
+            className="px-3.5 py-2.5 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            <span>Add New Shoe</span>
+            <span>Add Shoe</span>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            title="Log Out of Admin Panel"
+            className="px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-xl border border-red-200 transition-colors flex items-center gap-1.5"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Log Out</span>
           </button>
         </div>
       </div>
