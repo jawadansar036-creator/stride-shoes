@@ -146,30 +146,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Credentials info card */}
-          <div className="p-4 rounded-2xl bg-neutral-950/60 border border-neutral-800/80 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
-                Default Credentials
-              </span>
-              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
-                Configured
-              </span>
-            </div>
-            <div className="space-y-1 text-xs font-mono text-neutral-300">
-              <div className="flex justify-between items-center bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
-                <span className="text-neutral-500 text-[11px]">Email:</span>
-                <span className="select-all font-semibold text-white">admin@stride.com</span>
-              </div>
-              <div className="flex justify-between items-center bg-neutral-900/80 px-2.5 py-1.5 rounded-lg border border-neutral-800">
-                <span className="text-neutral-500 text-[11px]">Password:</span>
-                <span className="select-all font-semibold text-white">admin123456</span>
-              </div>
-            </div>
-            <p className="text-[10px] text-neutral-500 pt-1 leading-relaxed">
-              * Set <code className="text-neutral-300">ADMIN_EMAIL</code> and <code className="text-neutral-300">ADMIN_PASSWORD</code> in Vercel to change these.
-            </p>
-          </div>
+      
         </div>
 
         {/* Back to store link */}
