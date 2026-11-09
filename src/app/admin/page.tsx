@@ -87,6 +87,12 @@ export default function AdminDashboard() {
   const [editDocModal, setEditDocModal] = useState<KnowledgeDoc | null>(null);
   const [addDocModal, setAddDocModal] = useState(false);
 
+  // Image upload state (for Add/Edit product modal)
+  const [imageMode, setImageMode] = useState<'upload' | 'url'>('upload');
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
+
   // AI sandbox state
   const [testQuery, setTestQuery] = useState('What is your return policy and wear trial?');
   const [testResponse, setTestResponse] = useState<string | null>(null);
@@ -199,12 +205,73 @@ export default function AdminDashboard() {
     setTimeout(() => setNotification(null), 3500);
   };
 
+  // ---- Image upload handler (product modal) ----
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploadError('');
+    setImageUploading(true);
+
+    // Show local preview immediately
+    const localPreview = URL.createObjectURL(file);
+    setImagePreview(localPreview);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setImageUploadError(data.error || 'Upload failed');
+        setImagePreview('');
+        return;
+      }
+
+      setImagePreview(data.url);
+    } catch (err: any) {
+      setImageUploadError('Upload failed: ' + err.message);
+      setImagePreview('');
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  // Reset image state when modal opens/closes
+  const openAddProductModal = () => {
+    setImagePreview('');
+    setImageMode('upload');
+    setImageUploadError('');
+    setAddProductModal(true);
+  };
+
+  const openEditProductModal = (p: ProductItem) => {
+    setImagePreview(p.images[0] || '');
+    setImageMode('url');
+    setImageUploadError('');
+    setEditProductModal(p);
+  };
+
+  const closeProductModal = () => {
+    setEditProductModal(null);
+    setAddProductModal(false);
+    setImagePreview('');
+    setImageUploadError('');
+  };
+
   // ---------------- PRODUCT HANDLERS ----------------
 
   const handleSaveProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const id = formData.get('id') as string;
+
+    // Resolve final image: uploaded file URL > URL input > fallback
+    const resolvedImage = imagePreview ||
+      (formData.get('imageUrl') as string) ||
+      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1000&auto=format&fit=crop';
 
     const payload = {
       id: id || undefined,
@@ -217,7 +284,7 @@ export default function AdminDashboard() {
       discount: formData.get('discount') || undefined,
       description: formData.get('description'),
       features: (formData.get('features') as string).split('\n').filter(Boolean),
-      images: [(formData.get('image') as string) || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1000&auto=format&fit=crop'],
+      images: [resolvedImage],
       colors: (formData.get('colors') as string).split(',').map((c) => c.trim()).filter(Boolean),
       sizes: (formData.get('sizes') as string).split(',').map((s) => s.trim()).filter(Boolean),
       inStock: formData.get('inStock') === 'on',
@@ -236,8 +303,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         showNotification(id ? 'Shoe product updated successfully!' : 'New shoe added to catalog!');
-        setEditProductModal(null);
-        setAddProductModal(false);
+        closeProductModal();
         loadData();
       } else {
         showNotification(data.error || 'Failed to save product', 'error');
@@ -617,7 +683,7 @@ export default function AdminDashboard() {
           </Link>
 
           <button
-            onClick={() => setAddProductModal(true)}
+            onClick={() => openAddProductModal()}
             className="px-3.5 py-2.5 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
@@ -719,7 +785,7 @@ export default function AdminDashboard() {
               </select>
 
               <button
-                onClick={() => setAddProductModal(true)}
+                onClick={() => openAddProductModal()}
                 className="px-4 py-2 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -793,7 +859,7 @@ export default function AdminDashboard() {
                           <Eye className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => setEditProductModal(p)}
+                          onClick={() => openEditProductModal(p)}
                           className="p-1.5 text-neutral-600 hover:text-black hover:bg-neutral-100 rounded-lg"
                           title="Edit shoe details"
                         >
@@ -1119,10 +1185,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => {
-              setEditProductModal(null);
-              setAddProductModal(false);
-            }}
+            onClick={closeProductModal}
           />
           <div className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-6 sm:p-8 z-10 max-h-[90vh] overflow-y-auto space-y-5 animate-slide-up">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
@@ -1130,10 +1193,7 @@ export default function AdminDashboard() {
                 {editProductModal ? `Edit Shoe: ${editProductModal.name}` : 'Add New Shoe to Store'}
               </h3>
               <button
-                onClick={() => {
-                  setEditProductModal(null);
-                  setAddProductModal(false);
-                }}
+                onClick={closeProductModal}
                 className="p-1.5 text-neutral-400 hover:text-black rounded-lg"
               >
                 <X className="w-5 h-5" />
@@ -1226,15 +1286,117 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-neutral-700 uppercase">Image URL (Unsplash or CDN)</label>
-                <input
-                  type="url"
-                  name="image"
-                  required
-                  defaultValue={editProductModal?.images[0] || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=1000&auto=format&fit=crop'}
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-black"
-                />
+              {/* ---- IMAGE UPLOAD / URL SECTION ---- */}
+              <div className="space-y-2 p-4 bg-neutral-50 border border-neutral-200 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-neutral-700 uppercase text-xs">Product Image</label>
+                  {/* Mode toggle */}
+                  <div className="flex items-center bg-neutral-200 rounded-xl p-0.5 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setImageMode('upload'); setImagePreview(''); setImageUploadError(''); }}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                        imageMode === 'upload'
+                          ? 'bg-black text-white shadow'
+                          : 'text-neutral-600 hover:text-black'
+                      }`}
+                    >
+                      📁 Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setImageMode('url'); }}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                        imageMode === 'url'
+                          ? 'bg-black text-white shadow'
+                          : 'text-neutral-600 hover:text-black'
+                      }`}
+                    >
+                      🔗 Paste URL
+                    </button>
+                  </div>
+                </div>
+
+                {/* Upload mode */}
+                {imageMode === 'upload' && (
+                  <div className="space-y-2">
+                    <label
+                      className={`flex flex-col items-center justify-center w-full h-32 rounded-2xl border-2 border-dashed cursor-pointer transition-colors ${
+                        imageUploading
+                          ? 'border-neutral-300 bg-neutral-100'
+                          : 'border-neutral-300 bg-white hover:border-black hover:bg-neutral-50'
+                      }`}
+                    >
+                      {imageUploading ? (
+                        <div className="flex flex-col items-center gap-1 text-neutral-500">
+                          <RefreshCw className="w-6 h-6 animate-spin" />
+                          <span className="text-xs font-semibold">Uploading...</span>
+                        </div>
+                      ) : imagePreview ? (
+                        <div className="relative w-full h-full flex items-center justify-center rounded-2xl overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="max-h-full max-w-full object-contain rounded-xl"
+                          />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-2xl">
+                            <span className="text-white text-[11px] font-bold">Click to change image</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 text-neutral-400">
+                          <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-xl">🖼️</div>
+                          <span className="text-xs font-bold text-neutral-500">Click to upload shoe image</span>
+                          <span className="text-[10px] text-neutral-400">JPG, PNG, WebP, GIF up to 5 MB</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                        className="hidden"
+                        onChange={handleImageFileChange}
+                        disabled={imageUploading}
+                      />
+                    </label>
+                    {imageUploadError && (
+                      <p className="text-[11px] text-red-500 font-semibold flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 inline" /> {imageUploadError}
+                      </p>
+                    )}
+                    {imagePreview && !imageUploading && (
+                      <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                        <Check className="w-3 h-3 inline" /> Image uploaded successfully
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* URL mode */}
+                {imageMode === 'url' && (
+                  <div className="space-y-2">
+                    <input
+                      type="url"
+                      name="imageUrl"
+                      placeholder="https://images.unsplash.com/photo-..."
+                      defaultValue={editProductModal?.images[0] || ''}
+                      onChange={(e) => setImagePreview(e.target.value)}
+                      className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                    {imagePreview && (
+                      <div className="rounded-xl overflow-hidden border border-neutral-200 h-28 flex items-center justify-center bg-neutral-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imagePreview}
+                          alt="URL Preview"
+                          className="max-h-full max-w-full object-contain"
+                          onError={() => setImagePreview('')}
+                        />
+                      </div>
+                    )}
+                    <p className="text-[10px] text-neutral-400">Paste any public image URL (Unsplash, CDN, etc.)</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -1324,18 +1486,17 @@ export default function AdminDashboard() {
               <div className="pt-4 border-t border-neutral-100 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditProductModal(null);
-                    setAddProductModal(false);
-                  }}
+                  onClick={closeProductModal}
                   className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold rounded-xl"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-black hover:bg-neutral-800 text-white font-bold rounded-xl shadow"
+                  disabled={imageUploading}
+                  className="px-6 py-2 bg-black hover:bg-neutral-800 text-white font-bold rounded-xl shadow disabled:opacity-50 flex items-center gap-2"
                 >
+                  {imageUploading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                   Save Shoe to Store
                 </button>
               </div>
