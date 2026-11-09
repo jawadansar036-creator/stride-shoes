@@ -131,7 +131,7 @@ export default function AdminDashboard() {
   // Check auth status on initial load
   const checkAuth = async () => {
     try {
-      const res = await fetch('/api/admin/auth/me');
+      const res = await fetch('/api/admin/auth/me', { cache: 'no-store' });
       const data = await res.json();
       if (data?.authenticated) {
         setIsAuthenticated(true);
@@ -139,9 +139,11 @@ export default function AdminDashboard() {
         loadData();
       } else {
         setIsAuthenticated(false);
+        window.location.href = '/admin/login';
       }
     } catch {
       setIsAuthenticated(false);
+      window.location.href = '/admin/login';
     } finally {
       setAuthLoading(false);
     }
@@ -188,8 +190,7 @@ export default function AdminDashboard() {
       console.error('Logout error:', err);
     } finally {
       setIsAuthenticated(false);
-      setLoginPassword('');
-      showNotification('You have been securely logged out.', 'success');
+      window.location.href = '/admin/login';
     }
   };
 
