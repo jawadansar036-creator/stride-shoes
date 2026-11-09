@@ -29,6 +29,19 @@ function ShopContent() {
 
   const [sort, setSort] = useState<string>(initialSort);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [catalog, setCatalog] = useState<ProductItem[]>(PRODUCTS);
+
+  // Fetch latest products from API (including admin modifications)
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.products && Array.isArray(data.products)) {
+          setCatalog(data.products);
+        }
+      })
+      .catch((err) => console.error('Failed to load dynamic catalog:', err));
+  }, []);
 
   // Sync state if URL searchParams change
   useEffect(() => {
@@ -64,7 +77,7 @@ function ShopContent() {
 
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
-    let result = [...PRODUCTS];
+    let result = [...catalog];
 
     // Search query
     if (filters.search.trim()) {
@@ -202,7 +215,7 @@ function ShopContent() {
           All Footwear Collection
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 mt-1">
-          Explore {PRODUCTS.length} premium models with nitrogen supercritical foams, carbon plates, and fine Italian leathers.
+          Explore {catalog.length} premium models with nitrogen supercritical foams, carbon plates, and fine Italian leathers.
         </p>
       </div>
 

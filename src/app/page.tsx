@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { 
@@ -16,19 +16,47 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
-import { PRODUCTS } from '@/lib/products-data';
+import { PRODUCTS, ProductItem } from '@/lib/products-data';
 import { ProductCard } from '@/components/product-card';
 import { QuickViewModal } from '@/components/quick-view-modal';
-import { ProductItem } from '@/lib/products-data';
 import { ChatWidget } from '@/components/ai-chat/chat-widget';
 
 export default function HomePage() {
   const [quickViewProduct, setQuickViewProduct] = useState<ProductItem | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [allProducts, setAllProducts] = useState<ProductItem[]>(PRODUCTS);
+  const [settings, setSettings] = useState({
+    heroTitle: 'Find Your Perfect Pair.',
+    heroSubtitle: 'Premium footwear engineered for every step. From marathon carbon plates to hand-stitched Italian leather, discover unmatched propulsion and effortless comfort.',
+  });
 
-  const featuredProducts = PRODUCTS.filter((p) => p.isFeatured).slice(0, 4);
-  const newArrivals = PRODUCTS.filter((p) => p.isNewArrival).slice(0, 4);
-  const bestSellers = PRODUCTS.filter((p) => p.isBestSeller).slice(0, 4);
+  useEffect(() => {
+    fetch('/api/products')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.products && Array.isArray(d.products)) {
+          setAllProducts(d.products);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/admin/settings')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.settings) {
+          setSettings((prev) => ({
+            ...prev,
+            heroTitle: d.settings.heroTitle || prev.heroTitle,
+            heroSubtitle: d.settings.heroSubtitle || prev.heroSubtitle,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const featuredProducts = allProducts.filter((p) => p.isFeatured).slice(0, 4);
+  const newArrivals = allProducts.filter((p) => p.isNewArrival).slice(0, 4);
+  const bestSellers = allProducts.filter((p) => p.isBestSeller).slice(0, 4);
 
   const categories = [
     {
@@ -74,14 +102,11 @@ export default function HomePage() {
               </div>
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.05] text-white">
-                Find Your <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-200 to-neutral-500">
-                  Perfect Pair.
-                </span>
+                {settings.heroTitle}
               </h1>
 
               <p className="text-base sm:text-lg text-neutral-400 max-w-xl mx-auto lg:mx-0 font-normal leading-relaxed">
-                Premium footwear engineered for every step. From marathon carbon plates to hand-stitched Italian leather, discover unmatched propulsion and effortless comfort.
+                {settings.heroSubtitle}
               </p>
 
               {/* Action Buttons */}
@@ -213,7 +238,7 @@ export default function HomePage() {
             href="/shop"
             className="text-xs font-bold text-neutral-900 hover:text-black flex items-center gap-1 group"
           >
-            <span>View All 16 Models</span>
+            <span>View All {allProducts.length} Models</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>

@@ -142,6 +142,7 @@ export function Footer({ onOpenChat }: { onOpenChat?: () => void }) {
               <li><Link href="/shop" className="hover:text-white transition-colors">Returns & 30-Day Trial</Link></li>
               <li><Link href="/shop" className="hover:text-white transition-colors">1-Year Warranty Claim</Link></li>
               <li><Link href="/shop" className="hover:text-white transition-colors">Care & Cleaning Guide</Link></li>
+              <li><Link href="/admin" className="text-neutral-300 hover:text-white font-bold transition-colors pt-1 block">🔐 Store Admin Panel</Link></li>
             </ul>
           </div>
 

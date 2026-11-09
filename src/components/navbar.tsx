@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { 
@@ -12,7 +12,8 @@ import {
   ChevronRight, 
   Heart, 
   ShieldCheck, 
-  Truck 
+  Truck,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useCart } from '@/lib/cart-context';
 
@@ -20,9 +21,21 @@ export function Navbar({ onOpenChat }: { onOpenChat?: () => void }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [announcement, setAnnouncement] = useState('Free Express Shipping on Orders Over $75 | 30-Day "Run In Them" Trial Guarantee');
   const { totalItems, openCart } = useCart();
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    fetch('/api/admin/settings')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.settings?.announcementText) {
+          setAnnouncement(d.settings.announcementText);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,16 +59,22 @@ export function Navbar({ onOpenChat }: { onOpenChat?: () => void }) {
   return (
     <>
       {/* Top Notification Bar */}
-      <div className="bg-neutral-900 text-neutral-300 text-xs py-2 px-4 text-center font-medium tracking-wide flex items-center justify-center gap-4">
-        <span className="flex items-center gap-1.5">
-          <Truck className="w-3.5 h-3.5 text-accent" />
-          <span>Free Express Shipping on Orders Over $75</span>
-        </span>
-        <span className="hidden md:inline text-neutral-600">|</span>
-        <span className="hidden md:flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>30-Day &quot;Run In Them&quot; Trial Guarantee</span>
-        </span>
+      <div className="bg-neutral-900 text-neutral-300 text-xs py-2 px-4 font-medium tracking-wide">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex-1 text-center sm:text-left truncate">
+            <span className="inline-flex items-center gap-1.5">
+              <Truck className="w-3.5 h-3.5 text-accent" />
+              <span>{announcement}</span>
+            </span>
+          </div>
+          <Link
+            href="/admin"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-800 hover:bg-neutral-700 text-white text-[11px] font-bold transition-colors shrink-0"
+          >
+            <SlidersHorizontal className="w-3 h-3 text-accent" />
+            <span>Admin Portal</span>
+          </Link>
+        </div>
       </div>
 
       {/* Main Navbar */}
@@ -115,6 +134,16 @@ export function Navbar({ onOpenChat }: { onOpenChat?: () => void }) {
             >
               <Search className="w-5 h-5" />
             </button>
+
+            {/* Admin Portal Shortcut */}
+            <Link
+              href="/admin"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 sm:px-3 sm:py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs sm:text-sm font-semibold rounded-full transition-colors"
+              title="Admin Dashboard"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-neutral-600" />
+              <span>Admin</span>
+            </Link>
 
             {/* AI Assistant Trigger (Desktop & Mobile) */}
             <button
@@ -233,6 +262,15 @@ export function Navbar({ onOpenChat }: { onOpenChat?: () => void }) {
 
             {/* Drawer Bottom Actions */}
             <div className="p-5 border-t border-neutral-200 space-y-3 bg-neutral-50">
+              <Link
+                href="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-neutral-200 hover:bg-neutral-300 text-neutral-900 text-xs font-bold rounded-xl transition-colors"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-neutral-700" />
+                <span>Admin Dashboard & Website Controls</span>
+              </Link>
+
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);

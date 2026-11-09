@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PRODUCTS, ProductItem } from '@/lib/products-data';
+import { ProductItem } from '@/lib/products-data';
+import { getStoreProducts } from '@/lib/store-data';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   const minRating = searchParams.get('minRating') ? parseFloat(searchParams.get('minRating')!) : undefined;
   const sort = searchParams.get('sort') || 'featured';
 
-  let filtered: ProductItem[] = [...PRODUCTS];
+  let filtered: ProductItem[] = [...getStoreProducts()];
 
   if (search) {
     filtered = filtered.filter(

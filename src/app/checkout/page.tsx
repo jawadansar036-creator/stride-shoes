@@ -79,10 +79,28 @@ export default function CheckoutPage() {
     setTimeout(() => {
       const generatedOrderNum = `STR-${Math.floor(100000 + Math.random() * 900000)}`;
       setConfirmedOrderNumber(generatedOrderNum);
+      
+      // Save order to store database
+      fetch('/api/admin/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderNumber: generatedOrderNum,
+          customerName: `${firstName} ${lastName}`,
+          customerEmail: email,
+          shippingAddress: address,
+          city: `${city}, ${state} ${zip}`,
+          itemsCount: items.reduce((acc, i) => acc + i.quantity, 0),
+          itemsSummary: items.map((i) => `${i.product.name} (${i.size})`).join(', '),
+          total: finalTotal,
+          status: 'Confirmed',
+        }),
+      }).catch((err) => console.error('Failed to save order to admin DB:', err));
+
       setIsSubmitting(false);
       setOrderComplete(true);
       clearCart();
-    }, 1500);
+    }, 1200);
   };
 
   if (orderComplete) {

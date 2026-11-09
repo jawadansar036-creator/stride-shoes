@@ -1,5 +1,6 @@
-import { PRODUCTS, ProductItem } from '../products-data';
-import { KNOWLEDGE_BASE, KnowledgeDoc } from '../knowledge-base';
+import { ProductItem } from '../products-data';
+import { KnowledgeDoc } from '../knowledge-base';
+import { getStoreProducts, getStoreKnowledgeDocs } from '../store-data';
 import { generateEmbedding, cosineSimilarity } from './embeddings';
 
 export interface RetrievedProduct {
@@ -24,6 +25,15 @@ let knowledgeIndexCache: VectorIndexItem<KnowledgeDoc>[] | null = null;
 let isIndexing = false;
 
 /**
+ * Re-indexes all vector embeddings (useful after admin adds/updates products or policies)
+ */
+export async function reindexVectorStore(): Promise<void> {
+  productIndexCache = null;
+  knowledgeIndexCache = null;
+  await ensureVectorIndices();
+}
+
+/**
  * Initializes the vector cache on startup
  */
 export async function ensureVectorIndices(): Promise<void> {
@@ -37,9 +47,12 @@ export async function ensureVectorIndices(): Promise<void> {
 
   isIndexing = true;
   try {
+    const products = getStoreProducts();
+    const knowledgeDocs = getStoreKnowledgeDocs();
+
     // 1. Index products
     const productItems: VectorIndexItem<ProductItem>[] = [];
-    for (const prod of PRODUCTS) {
+    for (const prod of products) {
       const textToEmbed = `Product: ${prod.name}. Brand: ${prod.brand}. Category: ${prod.category}. Gender: ${prod.gender}. Price: $${prod.price}. Colors: ${prod.colors.join(', ')}. Sizes: ${prod.sizes.join(', ')}. Description: ${prod.description}. Features: ${prod.features.join(' ')}`;
       const embedding = await generateEmbedding(textToEmbed);
       productItems.push({
@@ -52,7 +65,7 @@ export async function ensureVectorIndices(): Promise<void> {
 
     // 2. Index knowledge base
     const knowledgeItems: VectorIndexItem<KnowledgeDoc>[] = [];
-    for (const doc of KNOWLEDGE_BASE) {
+    for (const doc of knowledgeDocs) {
       const textToEmbed = `Title: ${doc.title}. Category: ${doc.category}. Keywords: ${doc.keywords.join(', ')}. Content: ${doc.content}`;
       const embedding = await generateEmbedding(textToEmbed);
       knowledgeItems.push({
@@ -157,8 +170,9 @@ export async function searchProductsVector(
 
       if (results && results.length > 0) {
         const retrieved: RetrievedProduct[] = [];
+        const allProds = getStoreProducts();
         for (const r of results) {
-          const matched = PRODUCTS.find((p) => p.id === r.id);
+          const matched = allProds.find((p) => p.id === r.id);
           if (matched) {
             retrieved.push({ product: matched, similarity: Number(r.similarity) });
           }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -26,10 +26,32 @@ import { ChatWidget } from '@/components/ai-chat/chat-widget';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const product = PRODUCTS.find((p) => p.id === resolvedParams.id || p.slug === resolvedParams.id);
+  const [product, setProduct] = useState<ProductItem | null>(() => {
+    return PRODUCTS.find((p) => p.id === resolvedParams.id || p.slug === resolvedParams.id) || null;
+  });
+  const [loading, setLoading] = useState(!product);
+
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.products) {
+          const found = data.products.find((p: ProductItem) => p.id === resolvedParams.id || p.slug === resolvedParams.id);
+          if (found) {
+            setProduct(found);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [resolvedParams.id]);
+
+  if (!product && !loading) {
+    notFound();
+  }
 
   if (!product) {
-    notFound();
+    return <div className="max-w-7xl mx-auto px-4 py-20 text-center text-neutral-500">Loading shoe details...</div>;
   }
 
   const { addItem } = useCart();

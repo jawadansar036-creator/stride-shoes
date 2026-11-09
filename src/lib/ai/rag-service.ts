@@ -1,6 +1,7 @@
 import { searchKnowledgeBase, searchProductsVector, RetrievedKnowledgeDoc, RetrievedProduct } from './vector-store';
 import { generateRAGCompletion, ChatMessage, LLMResponse } from './llm-provider';
-import { PRODUCTS, ProductItem } from '../products-data';
+import { ProductItem } from '../products-data';
+import { getStoreProducts } from '../store-data';
 
 export interface RAGAnswer {
   message: string;
@@ -85,8 +86,9 @@ ${productContext}
 
   // 5. Hydrate Recommended Products
   const recommendedProducts: ProductItem[] = [];
+  const allCurrentProducts = getStoreProducts();
   for (const pid of llmResult.recommendedProductIds) {
-    const prod = PRODUCTS.find((p) => p.id === pid);
+    const prod = allCurrentProducts.find((p) => p.id === pid);
     if (prod && !recommendedProducts.some((r) => r.id === prod.id)) {
       recommendedProducts.push(prod);
     }
@@ -126,7 +128,7 @@ ${productContext}
  */
 function findProductsByCriteria(query: string): ProductItem[] {
   const q = query.toLowerCase();
-  let results = [...PRODUCTS];
+  let results = [...getStoreProducts()];
 
   // Budget matching e.g. "under 100", "under $150", "budget"
   const underPriceMatch = q.match(/under\s*\$?(\d+)/i) || q.match(/less\s*than\s*\$?(\d+)/i);
